@@ -28,16 +28,16 @@ async def login():
         page = await context.new_page()
         await page.goto(CHATGPT_URL)
 
-        print("🌐 Browser otvoren na chatgpt.com")
-        print("📝 Uloguj se ručno u browser...")
+        print("🌐 Browser opened at chatgpt.com")
+        print("📝 Log in manually in the browser...")
         print()
-        input("✅ Kad se uloguješ, pritisni ENTER ovde... ")
+        input("✅ Once logged in, press ENTER here... ")
 
         await context.storage_state(path=str(STORAGE_PATH))
         os.chmod(STORAGE_PATH, 0o600)
         await browser.close()
 
-        print(f"💾 Session sačuvan: {STORAGE_PATH}")
+        print(f"💾 Session saved: {STORAGE_PATH}")
 
 
 async def get_context(headless: bool = False) -> tuple:
@@ -47,7 +47,7 @@ async def get_context(headless: bool = False) -> tuple:
     """
     if not STORAGE_PATH.exists():
         raise FileNotFoundError(
-            "Nema sačuvanog session-a. Pokreni 'chatgpt login' prvo."
+            "No saved session found. Run 'chatgpt login' first."
         )
 
     pw = await async_playwright().start()

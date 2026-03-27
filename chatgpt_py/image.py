@@ -27,7 +27,7 @@ async def generate_image(
     await send_message(page, full_prompt)
 
     # Wait for image to appear
-    print("⏳ Čekam da se slika generiše...")
+    print("⏳ Waiting for image generation...")
 
     # Wait for generated image — poll multiple selectors
     img_selectors = [
@@ -52,7 +52,7 @@ async def generate_image(
 
     if not found_selector:
         await page.screenshot(path='/tmp/chatgpt-image-fail.png')
-        raise Exception("Nijedna slika nije pronađena u odgovoru")
+        raise Exception("No image found in the response")
 
     img_selector = found_selector
 
@@ -63,14 +63,14 @@ async def generate_image(
     count = await images.count()
 
     if count == 0:
-        raise Exception("Nijedna slika nije pronađena u odgovoru")
+        raise Exception("No image found in the response")
 
     # Get the last matching image
     last_img = images.nth(count - 1)
     img_src = await last_img.get_attribute("src")
 
     if not img_src:
-        raise Exception("Ne mogu da izvučem URL slike")
+        raise Exception("Could not extract image URL")
 
     # Download the image
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -83,7 +83,7 @@ async def generate_image(
     with open(output_path, "wb") as f:
         f.write(body)
 
-    print(f"✅ Slika sačuvana: {output_path}")
+    print(f"✅ Image saved: {output_path}")
     return str(output_path)
 
 
@@ -97,13 +97,13 @@ async def download_last_image(
     count = await images.count()
 
     if count == 0:
-        raise Exception("Nema slika u chatu")
+        raise Exception("No images found in chat")
 
     last_img = images.nth(count - 1)
     img_src = await last_img.get_attribute("src")
 
     if not img_src:
-        raise Exception("Ne mogu da izvučem URL slike")
+        raise Exception("Could not extract image URL")
 
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / output
@@ -114,5 +114,5 @@ async def download_last_image(
     with open(output_path, "wb") as f:
         f.write(body)
 
-    print(f"✅ Slika sačuvana: {output_path}")
+    print(f"✅ Image saved: {output_path}")
     return str(output_path)

@@ -39,7 +39,7 @@
 
 ```bash
 # Clone and install
-git clone https://github.com/yourusername/chatgpt-py.git
+git clone https://github.com/ceoimperiumprojects/chatgpt-py.git
 cd chatgpt-py
 pip install -e .
 
@@ -74,10 +74,10 @@ Opens a Chromium browser — log in to ChatGPT manually, then press Enter in ter
 
 ```bash
 chatgpt login
-# 🌐 Browser otvoren na chatgpt.com
-# 📝 Uloguj se ručno u browser...
-# ✅ Kad se uloguješ, pritisni ENTER ovde...
-# 💾 Session sačuvan
+# 🌐 Browser opened at chatgpt.com
+# 📝 Log in manually in the browser...
+# ✅ Once logged in, press ENTER here...
+# 💾 Session saved
 ```
 
 ### `chatgpt status`
@@ -86,7 +86,7 @@ Check if your saved session is still valid.
 
 ```bash
 chatgpt status
-# ✅ Session je validan — ulogovan si!
+# ✅ Session is valid — you're logged in!
 ```
 
 ### `chatgpt ask <prompt>`

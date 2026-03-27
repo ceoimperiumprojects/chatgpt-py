@@ -38,22 +38,22 @@ def status():
     """Check if session is valid."""
     from .browser import check_status, STORAGE_PATH
     if not STORAGE_PATH.exists():
-        click.echo("❌ Nema sačuvanog session-a. Pokreni 'chatgpt login'.")
+        click.echo("❌ No saved session found. Run 'chatgpt login' first.")
         return
 
-    click.echo("🔍 Proveravam session...")
+    click.echo("🔍 Checking session...")
     valid = run(check_status())
     if valid:
-        click.echo("✅ Session je validan — ulogovan si!")
+        click.echo("✅ Session is valid — you're logged in!")
     else:
-        click.echo("❌ Session je istekao. Pokreni 'chatgpt login' ponovo.")
+        click.echo("❌ Session expired. Run 'chatgpt login' again.")
 
 
 # ── Chat ─────────────────────────────────────────────────────────
 
 @cli.command()
 @click.argument("prompt")
-@click.option("--timeout", default=120, help="Timeout u sekundama")
+@click.option("--timeout", default=120, help="Timeout in seconds")
 def ask(prompt, timeout):
     """Ask ChatGPT a question."""
     from .browser import get_page

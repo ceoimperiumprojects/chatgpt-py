@@ -9,7 +9,7 @@ async def upload_file(page: Page, file_path: str) -> None:
     """Upload a file to the current chat."""
     path = Path(file_path).resolve()
     if not path.exists():
-        raise FileNotFoundError(f"Fajl ne postoji: {path}")
+        raise FileNotFoundError(f"File not found: {path}")
 
     # Click the attachment/paperclip button
     attach_btn = page.locator('[aria-label*="Attach"], [data-testid="attachment-button"], button:has(svg path[d*="M7"])')
@@ -35,7 +35,7 @@ async def upload_file(page: Page, file_path: str) -> None:
 
     # Wait for upload to complete
     await page.wait_for_timeout(2000)
-    print(f"✅ Fajl uploadovan: {path.name}")
+    print(f"✅ File uploaded: {path.name}")
 
 
 async def download_last(page: Page, output_dir: str = ".") -> str:
@@ -55,7 +55,7 @@ async def download_last(page: Page, output_dir: str = ".") -> str:
         download = await download_info.value
         save_path = output_path / download.suggested_filename
         await download.save_as(str(save_path))
-        print(f"✅ Fajl preuzet: {save_path}")
+        print(f"✅ File downloaded: {save_path}")
         return str(save_path)
 
     # Fallback: try downloading last image
