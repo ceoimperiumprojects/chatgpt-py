@@ -1,0 +1,13 @@
+[project]
+name = "chatgpt-py"
+version = "0.1.0"
+description = "Programmatic control of ChatGPT web interface via Playwright"
+requires-python = ">=3.10"
+dependencies = ["playwright>=1.40", "click>=8.0"]
+
+[project.scripts]
+chatgpt = "chatgpt_py.cli:cli"
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
