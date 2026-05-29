@@ -1,11 +1,18 @@
-"""Playwright session management for ChatGPT."""
+"""Playwright session management for ChatGPT — Camofox-backed."""
 
 import asyncio
+import json
 import os
 from pathlib import Path
-from playwright.async_api import async_playwright, Page, BrowserContext
+from .camofox_browser import (
+    CamofoxPage,
+    get_page as _get_camofox_page,
+    check_status as _check_camofox_status,
+    CAMOFOX_BASE,
+    CAMOFOX_USER,
+    CHATGPT_URL,
+)
 
-CHATGPT_URL = "https://chatgpt.com"
 STORAGE_DIR = Path.home() / ".chatgpt-py"
 STORAGE_PATH = STORAGE_DIR / "storage_state.json"
 
@@ -14,45 +21,101 @@ def ensure_storage_dir():
     STORAGE_DIR.mkdir(parents=True, exist_ok=True)
 
 
+# ── Camofox mode (default) ─────────────────────────────────────────
+
+async def get_page(user_id: str = CAMOFOX_USER) -> CamofoxPage:
+    """Get a Camofox page navigated to ChatGPT (headless)."""
+    return await _get_camofox_page(user_id)
+
+
+async def check_status(user_id: str = CAMOFOX_USER) -> bool:
+    """Check if ChatGPT session is valid (logged in)."""
+    return await _check_camofox_status(user_id)
+
+
+# ── Login: Chromium headed → import cookies into Camofox ──────────
+
 async def login():
-    """Open browser for manual login, save session."""
+    """Open a VISIBLE Chromium browser for ChatGPT login.
+
+    After you log in, cookies are automatically imported into Camofox.
+    All subsequent commands use Camofox in headless mode.
+    """
+    import httpx
+    from playwright.async_api import async_playwright
+
     ensure_storage_dir()
+
+    print("🌐 Launching visible Chromium browser...")
+    print("   (this opens a real window — you'll see it on your desktop)")
+    print()
+
     async with async_playwright() as p:
         browser = await p.chromium.launch(
             headless=False,
             args=["--disable-blink-features=AutomationControlled"],
         )
-        context = await browser.new_context(
-            viewport={"width": 1280, "height": 900},
-        )
+        context = await browser.new_context(viewport={"width": 1280, "height": 900})
         page = await context.new_page()
         await page.goto(CHATGPT_URL)
 
-        print("🌐 Browser opened at chatgpt.com")
-        print("📝 Log in manually in the browser...")
+        print("📝 Log in to ChatGPT in the browser window.")
+        print("   After logging in, come back and press ENTER.")
         print()
-        input("✅ Once logged in, press ENTER here... ")
+        await asyncio.get_running_loop().run_in_executor(
+            None, input, "✅ Press ENTER when logged in... "
+        )
+        print()
 
+        # Save Playwright storage state
         await context.storage_state(path=str(STORAGE_PATH))
         os.chmod(STORAGE_PATH, 0o600)
+
+        # Extract cookies for Camofox import
+        storage = json.loads(STORAGE_PATH.read_text())
+        cookies = storage.get("cookies", [])
+
+        print(f"🍪 Got {len(cookies)} cookies from Chromium.")
+
+        # Import cookies into Camofox
+        if cookies:
+            print("📥 Importing cookies into Camofox...")
+            async with httpx.AsyncClient(timeout=httpx.Timeout(15.0)) as client:
+                r = await client.post(
+                    f"{CAMOFOX_BASE}/sessions/{CAMOFOX_USER}/cookies",
+                    json={"cookies": cookies},
+                )
+                if r.status_code == 200:
+                    print("✅ Cookies imported into Camofox!")
+                else:
+                    print(f"⚠️  Cookie import: {r.status_code} — {r.text[:200]}")
+                    print("   Session may still work via profile persistence.")
+        else:
+            print("⚠️  No cookies found. Did you log in?")
+
         await browser.close()
 
-        print(f"💾 Session saved: {STORAGE_PATH}")
+    print()
+    print("💾 Done! Camofox now has your ChatGPT session.")
+    print()
+    print("   Verify:  chatgpt status")
+    print("   Chat:    chatgpt ask \"hello\"")
+    print()
+    print("All commands now run headless via Camofox. 🚀")
 
 
-async def get_context(headless: bool = False) -> tuple:
-    """Load saved session and return (playwright, browser, context, page).
+# ── Legacy Playwright (kept for reference) ─────────────────────────
 
-    Note: headless=False by default — ChatGPT throttles/blocks headless browsers.
-    """
+async def get_page_playwright():
+    """Legacy: Get page via Playwright Chromium."""
+    from playwright.async_api import async_playwright
+
     if not STORAGE_PATH.exists():
-        raise FileNotFoundError(
-            "No saved session found. Run 'chatgpt login' first."
-        )
+        raise FileNotFoundError("No saved session. Run 'chatgpt login' first.")
 
     pw = await async_playwright().start()
     browser = await pw.chromium.launch(
-        headless=headless,
+        headless=False,
         args=[
             "--disable-blink-features=AutomationControlled",
             "--no-sandbox",
@@ -63,38 +126,13 @@ async def get_context(headless: bool = False) -> tuple:
     context = await browser.new_context(
         storage_state=str(STORAGE_PATH),
         viewport={"width": 400, "height": 300},
-        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
+        user_agent="Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 ...",
     )
     page = await context.new_page()
-    # Hide webdriver flag to avoid bot detection
-    await page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined})')
-    return pw, browser, context, page
-
-
-async def get_page(headless: bool = False) -> tuple:
-    """Get a page navigated to ChatGPT. Returns (pw, browser, page)."""
-    pw, browser, context, page = await get_context(headless)
+    await page.add_init_script(
+        'Object.defineProperty(navigator, "webdriver", {get: () => undefined})'
+    )
     await page.goto(CHATGPT_URL, wait_until="domcontentloaded")
-    # Wait for chat interface to fully load
     await page.wait_for_selector('[id="prompt-textarea"]', timeout=15000)
     await page.wait_for_timeout(1000)
     return pw, browser, page
-
-
-async def check_status() -> bool:
-    """Check if session is valid."""
-    if not STORAGE_PATH.exists():
-        return False
-    try:
-        pw, browser, page = await get_page()
-        # Check if we're logged in by looking for the chat input
-        try:
-            await page.wait_for_selector("#prompt-textarea", timeout=10000)
-            logged_in = True
-        except Exception:
-            logged_in = False
-        await browser.close()
-        await pw.stop()
-        return logged_in
-    except Exception:
-        return False
